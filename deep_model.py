@@ -25,11 +25,14 @@ class Q_Model(object):
 
             # fully connected layer
             for num in network_shape[:-1]:
-                fully_connected = tf.contrib.layers.fully_connected(fully_connected, num_outputs=num)
+                fully_connected = tf.contrib.layers.fully_connected(fully_connected, num_outputs=num, activation_fn=None)
+                fully_connected.trainable = trainable
+                fully_connected = tf.contrib.layers.layer_norm(fully_connected, center=True, scale=True)
                 fully_connected.trainable = trainable
 
-            self._Q = tf.contrib.layers.fully_connected(fully_connected, 1, activation_fn=tf.sigmoid)
-            self._Q.trainable = trainable
+            fully_connected = tf.contrib.layers.fully_connected(fully_connected, 1, activation_fn=tf.sigmoid)
+            fully_connected.trainable = trainable
+            self._Q = fully_connected * 2 - 1
 
     @property
     def Q(self):
