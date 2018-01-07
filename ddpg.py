@@ -33,6 +33,10 @@ class Critic(object):
         return self.Q_model_apo.action
 
     @property
+    def Q(self):
+        return self.Q_model.Q
+
+    @property
     def Q_apo(self):
         return self.Q_model_apo.Q
 

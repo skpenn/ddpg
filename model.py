@@ -49,19 +49,21 @@ class Model(object):
         self._sess.run(tf.global_variables_initializer())
 
         for _ in range(self.episode):
-            end_state = self.env()
+            end_state, _, _ = self.env()
             while True:
                 start_state = end_state
                 data_s_i[0] = start_state
                 action = self._sess.run(self._actor.a, {s_i: data_s_i})[0] + np.random.normal(scale=self.noise_stddev, size=self.action_size) # get an action, a = Mu(s)+Noise
-                end_state, reward = self.env(action)
-                if end_state is None:   # final state
+                end_state, reward, done = self.env(action)
+                if done:   # final state
                     break
 
                 transition = Transition(start_state, action, reward, end_state)
                 self._replayBuf.append(transition)
 
                 if len(self._replayBuf) >= self.buffer_size:
+                    loss = 0
+                    a = 0
                     for _ in range(self.train_epoch):
                         sample = list(range(self.buffer_size))
                         np.random.shuffle(sample)
@@ -79,7 +81,11 @@ class Model(object):
                                         s_i_next: data_s_i_next,
                                         a_i_next: data_a_i_next,
                                         r_i: data_r_i})
-                        self._sess.run(self._actor.maximize_action_q(self._critic.a_grads),     # maximize actor-critic value
+                        _, a = self._sess.run([self._actor.maximize_action_q(self._critic.a_grads),self._actor.a],     # maximize actor-critic value
                                        {s_i: data_s_i})
+                        q = self._sess.run(self._critic.Q,                  # calculate q value
+                                              {s_i: data_s_i, a_i:a})
                         self._sess.run(self._critic.update_target_net())     # update target network
                         self._sess.run(self._actor.update_target_net())
+                    print("Average loss: {}".format(loss.mean()))
+                    print("Average Q value: {}".format(q.mean()))

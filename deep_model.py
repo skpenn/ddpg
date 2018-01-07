@@ -21,10 +21,10 @@ class Q_Model(object):
                 out.trainable = trainable
 
             # flatten
-            fully_connected = tf.reshape(out, [batch_size, -1])
+            fully_connected = tf.concat((tf.reshape(out, [batch_size, -1]), self.action), axis=1)
 
             # fully connected layer
-            for num in network_shape[:-1]:
+            for num in network_shape[-1]:
                 fully_connected = tf.contrib.layers.fully_connected(fully_connected, num_outputs=num, activation_fn=None)
                 fully_connected.trainable = trainable
                 fully_connected = tf.contrib.layers.layer_norm(fully_connected, center=True, scale=True)
@@ -64,7 +64,7 @@ class Mu_Model(object):
             fully_connected = tf.reshape(out, [batch_size, -1])
 
             # fully connected layer
-            for num in network_shape[:-1]:
+            for num in network_shape[-1]:
                 fully_connected = tf.contrib.layers.fully_connected(fully_connected, num_outputs=num)
                 fully_connected.trainable = trainable
 
