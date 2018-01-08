@@ -53,6 +53,9 @@ class Critic(object):
             tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in zip(self._theta_apo, self._theta))
         return tf.group(*assignments)
 
+    def init_target_net(self):
+        assignments = (tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta))
+
 
 class Actor(object):
     def __init__(self, Mu_model, Mu_model_apo, gamma: float, tau: float, learning_rate: float=0.01):
@@ -91,4 +94,7 @@ class Actor(object):
                        tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in
                        zip(self._theta_apo, self._theta))
         return tf.group(*assignments)
+
+    def init_target_net(self):
+        assignments = (tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta))
 

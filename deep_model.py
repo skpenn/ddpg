@@ -34,6 +34,7 @@ class Q_Model(object):
                 fully_connected.trainable = trainable
                 fully_connected = tf.contrib.layers.layer_norm(fully_connected, center=True, scale=True)
                 fully_connected.trainable = trainable
+                fully_connected = tf.nn.relu(fully_connected)
 
             self._Q = tf.contrib.layers.fully_connected(fully_connected, 1, activation_fn=None)
             self._Q.trainable = trainable
@@ -76,6 +77,7 @@ class Mu_Model(object):
                 fully_connected.trainable = trainable
                 fully_connected = tf.contrib.layers.layer_norm(fully_connected, center=True, scale=True)
                 fully_connected.trainable = trainable
+                fully_connected = tf.nn.relu(fully_connected)
 
             self._a = tf.contrib.layers.fully_connected(fully_connected, action_size, activation_fn=tf.sigmoid)
             self._a.trainable = trainable

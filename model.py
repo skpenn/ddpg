@@ -8,7 +8,7 @@ from memory import ReplayBuf, Transition
 class Model(object):
     def __init__(self, env: callable, state_shape: list, action_size: int, q_network_shape: tuple,
                  mu_network_shape: tuple, buffer_size: int, gamma: float, tau: float, noise_stddev: float,
-                 save_dir: str, learning_rate: float, batch_size: int, episode: int, train_epoch: int,
+                 save_dir: str, learning_rate: float, batch_size: int, episode: int, train_epoch: int, run_epoch: int=100,
                  action_reshape: callable=None):
         self.env = env
         self.batch_size = batch_size
@@ -23,6 +23,7 @@ class Model(object):
         self.train_epoch = train_epoch
         self.dir = save_dir
         self.action_reshape = action_reshape
+        self.run_epoch = run_epoch
 
         input_s = Inputs(state_shape, batch_size)
         input_s_plus_1 = Inputs(state_shape, batch_size)
@@ -63,7 +64,9 @@ class Model(object):
         else:
             self._sess = tf.Session()
             self._sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
+            self._sess.run([self._actor.init_target_net(), self._critic.init_target_net()])
 
+        count = 0
         for _ in range(self.episode):
             end_state = self.env.reset()
             while True:
@@ -84,14 +87,17 @@ class Model(object):
                 transition = Transition(start_state, action, reward, end_state)
                 self._replayBuf.append(transition)
 
+                count += 1
+
                 if _done:   # final state
                     break
 
-                if len(self._replayBuf) >= self.buffer_size:
+                if len(self._replayBuf) >= self.batch_size and count >= self.run_epoch:
+                    count = 0
                     loss = np.zeros([0])
                     q = np.zeros([0])
                     for _ in range(self.train_epoch):
-                        sample = list(range(self.buffer_size))
+                        sample = list(range( len(self._replayBuf) ))
                         np.random.shuffle(sample)
                         sample_batch = self._replayBuf.get_by_indexes(sample[:self.batch_size])   # get batch
                         for i, data in enumerate(sample_batch):                                   # generate data
@@ -107,20 +113,23 @@ class Model(object):
                                         s_i_next: data_s_i_next,
                                         a_i_next: data_a_i_next,
                                         r_i: data_r_i})
-                    for _ in range(self.train_epoch):
-                        sample = list(range(self.buffer_size))
-                        np.random.shuffle(sample)
-                        sample_batch = self._replayBuf.get_by_indexes(sample[:self.batch_size])  # get batch
-                        for i, data in enumerate(sample_batch):  # generate data
-                            data_s_i[i] = data.state
+                        '''
+                        for _ in range(self.train_epoch):
+                            sample = list(range(self.buffer_size))
+                            np.random.shuffle(sample)
+                            sample_batch = self._replayBuf.get_by_indexes(sample[:self.batch_size])  # get batch
+                            for i, data in enumerate(sample_batch):  # generate data
+                                data_s_i[i] = data.state
+                        '''
 
                         a = self._sess.run(self._actor.a, {s_i: data_s_i})
                         _, a = self._sess.run([self._actor.maximize_action_q(), self._actor.a],     # maximize actor-critic value
                                        {s_i: data_s_i, a_i: a})
                         q = self._sess.run(self._critic.Q,                  # calculate q value
                                               {s_i: data_s_i, a_i:a})
-                    self._sess.run(self._critic.update_target_net())     # update target network
-                    self._sess.run(self._actor.update_target_net())
+                        self._sess.run(self._critic.update_target_net())     # update target network
+                        self._sess.run(self._actor.update_target_net())
+
                     self._saver.save(self._sess, save_path=self.dir)
                     print("Average loss: {}".format(loss.mean()))
                     print("Average Q value: {}".format(q.mean()))
