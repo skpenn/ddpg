@@ -26,9 +26,9 @@ class Model(object):
         input_s_plus_1 = Inputs(state_shape, batch_size)
         q = Q_Model("Q_0", input_s, action_size, q_network_shape, batch_size)
         q_apo = Q_Model("Q_apo", input_s_plus_1, action_size, q_network_shape, batch_size, trainable=False)
-        mu = Mu_Model("Mu_0", input_s, action_size, mu_network_shape, batch_size)
+        mu = Mu_Model("Mu_0", input_s, action_size, mu_network_shape, batch_size, q.a_grads)
         mu_apo = Mu_Model("Mu_apo", input_s_plus_1, action_size, mu_network_shape, batch_size, trainable=False)
-        self._actor = Actor(mu, mu_apo, gamma, tau, batch_size, q.a_grads, learning_rate)
+        self._actor = Actor(mu, mu_apo, gamma, tau, batch_size, learning_rate)
         self._critic = Critic(q, q_apo, gamma, tau, batch_size, learning_rate)
         self._replayBuf = ReplayBuf(buffer_size)
         self._sess = None
