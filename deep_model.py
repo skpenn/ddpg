@@ -1,16 +1,11 @@
 import tensorflow as tf
 
 
-class Inputs(object):
-    def __init__(self, state_shape: list, batch_size):
-        self.s = tf.placeholder("float32", shape=[batch_size]+state_shape)
-
-
 class Q_Model(object):
-    def __init__(self, name: str,  inputs: Inputs, action_size: int, network_shape: tuple, batch_size: int= 32, trainable: bool = True):
+    def __init__(self, name: str, state, action, network_shape: tuple, batch_size: int= 32, trainable: bool = True):
         self.name = name
-        self.state = inputs.s
-        self.action = tf.placeholder("float32", shape=[batch_size, action_size])
+        self.state = state
+        self.action = action
 
         with tf.variable_scope(name) as scope:
             out = self.state
@@ -51,9 +46,9 @@ class Q_Model(object):
 
 
 class Mu_Model(object):
-    def __init__(self, name: str, inputs: Inputs, action_size: int, network_shape: tuple, batch_size: int=32, trainable: bool = True, y_grads=None):
+    def __init__(self, name: str, state, action_size: int, network_shape: tuple, batch_size: int=32, trainable: bool = True, y_grads=None):
         self.name = name
-        self.state = inputs.s
+        self.state = state
         self.y_grads = y_grads
 
         with tf.variable_scope(name) as scope:

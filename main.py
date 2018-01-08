@@ -25,7 +25,7 @@ if __name__=="__main__":
                   buffer_size=100000,
                   gamma=0.99,
                   tau=0.01,
-                  noise_stddev=0,
+                  noise_stddev=0.001,
                   save_dir="log/model.ck-pt",
                   learning_rate=0.001,
                   batch_size=128,

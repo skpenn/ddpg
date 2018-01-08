@@ -41,10 +41,6 @@ class Critic(object):
     def Q_apo(self):
         return self.Q_model_apo.Q
 
-    @property
-    def a_grads(self):
-        return self.Q_model.a_grads
-
     def minimize_loss(self):
         return self._optimizer
 

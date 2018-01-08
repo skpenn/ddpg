@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
-from deep_model import Q_Model, Mu_Model, Inputs
+from deep_model import Q_Model, Mu_Model
 from ddpg import Actor, Critic
-from memory import ReplayBuf, Transition
+from memory import ReplayBuf
 
 
 class Model(object):
@@ -25,15 +25,19 @@ class Model(object):
         self.action_reshape = action_reshape
         self.run_epoch = run_epoch
 
-        input_s = Inputs(state_shape, batch_size)
-        input_s_plus_1 = Inputs(state_shape, batch_size)
-        q = Q_Model("Q_0", input_s, action_size, q_network_shape, batch_size)
-        q_apo = Q_Model("Q_apo", input_s_plus_1, action_size, q_network_shape, batch_size, trainable=False)
-        mu = Mu_Model("Mu_0", input_s, action_size, mu_network_shape, batch_size, y_grads=q.a_grads)
-        mu_apo = Mu_Model("Mu_apo", input_s_plus_1, action_size, mu_network_shape, batch_size, trainable=False)
+        state_i = tf.placeholder("float32", [batch_size]+state_shape)
+        state_i_next = tf.placeholder("float32", [batch_size]+state_shape)
+        action_i = tf.placeholder("float32", [batch_size, action_size])
+        mu_apo = Mu_Model("Mu_apo", state_i_next, action_size, mu_network_shape, batch_size, trainable=False)
+        q = Q_Model("Q_0", state_i, action_i, q_network_shape, batch_size)
+        mu = Mu_Model("Mu_0", state_i, action_size, mu_network_shape, batch_size, y_grads=q.a_grads)
+        q_apo = Q_Model("Q_apo", state_i_next, mu_apo.a, q_network_shape, batch_size, trainable=False)
         self._actor = Actor(mu, mu_apo, gamma, tau, learning_rate)
         self._critic = Critic(q, q_apo, gamma, tau, batch_size, learning_rate)
-        self._replayBuf = ReplayBuf(buffer_size)
+        self._s_buf = ReplayBuf(buffer_size, self.state_shape)
+        self._a_buf = ReplayBuf(buffer_size, [self.action_size])
+        self._r_buf = ReplayBuf(buffer_size, [1])
+        self._s_next_buf = ReplayBuf(buffer_size, self.state_shape)
         self._sess = None
         self._saver = tf.train.Saver()
 
@@ -42,14 +46,10 @@ class Model(object):
         s_i = self._actor.s
         s_i_next = self._actor.s_apo
         a_i = self._critic.a
-        a_i_next = self._critic.a_apo
         r_i = self._critic.reward
 
         # data container definition
         data_s_i = np.zeros([self.batch_size] + self.state_shape)
-        data_a_i = np.zeros([self.batch_size, self.action_size])
-        data_r_i = np.zeros([self.batch_size, 1])
-        data_s_i_next = np.zeros([self.batch_size] + self.state_shape)
 
         ck_pt = tf.train.get_checkpoint_state(self.dir)
         if ck_pt is not None:
@@ -84,34 +84,33 @@ class Model(object):
                 #print("Action: {}".format(action))
                 #print("Reward: {}".format(reward))
 
-                transition = Transition(start_state, action, reward, end_state)
-                self._replayBuf.append(transition)
+
+                self._s_buf.append(start_state)
+                self._a_buf.append(action)
+                self._r_buf.append(np.array([reward]))
+                self._s_next_buf.append(end_state)
 
                 count += 1
 
                 if _done:   # final state
                     break
 
-                if len(self._replayBuf) >= self.batch_size and count >= self.run_epoch:
+                if len(self._s_buf) >= self.batch_size*10 and count >= self.run_epoch:
                     count = 0
                     loss = np.zeros([0])
                     q = np.zeros([0])
                     for _ in range(self.train_epoch):
-                        sample = list(range( len(self._replayBuf) ))
+                        sample = list(range( len(self._s_buf) ))
                         np.random.shuffle(sample)
-                        sample_batch = self._replayBuf.get_by_indexes(sample[:self.batch_size])   # get batch
-                        for i, data in enumerate(sample_batch):                                   # generate data
-                            data_s_i[i] = data.state
-                            data_a_i[i] = data.action
-                            data_r_i[i] = np.array([data.reward])
-                            data_s_i_next[i] = data.next_state
+                        data_s_i = self._s_buf.get_by_indexes(sample[:self.batch_size])   # get batch
+                        data_a_i = self._a_buf.get_by_indexes(sample[:self.batch_size])
+                        data_r_i = self._r_buf.get_by_indexes(sample[:self.batch_size])
+                        data_s_i_next= self._s_next_buf.get_by_indexes(sample[:self.batch_size])
 
-                        data_a_i_next = self._sess.run(self._actor.a_apo, {s_i_next:data_s_i_next})  # get a_i+1 = Mu(s_i+1)
                         _, loss = self._sess.run([self._critic.minimize_loss(), self._critic.loss],   # minimize critic loss
                                        {s_i: data_s_i,
                                         a_i: data_a_i,
                                         s_i_next: data_s_i_next,
-                                        a_i_next: data_a_i_next,
                                         r_i: data_r_i})
                         '''
                         for _ in range(self.train_epoch):
@@ -130,6 +129,5 @@ class Model(object):
                         self._sess.run(self._critic.update_target_net())     # update target network
                         self._sess.run(self._actor.update_target_net())
 
-                    self._saver.save(self._sess, save_path=self.dir)
                     print("Average loss: {}".format(loss.mean()))
                     print("Average Q value: {}".format(q.mean()))
