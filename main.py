@@ -22,15 +22,16 @@ if __name__=="__main__":
                   action_size=len(env.action_space.low),
                   q_network_shape=tuple([[64, 32]]),
                   mu_network_shape=tuple([[48, 48]]),
-                  buffer_size=1024,
+                  buffer_size=100000,
                   gamma=0.99,
                   tau=0.01,
                   noise_stddev=0,
                   save_dir="log/model.ck-pt",
                   learning_rate=0.001,
-                  batch_size=32,
+                  batch_size=128,
                   episode=10000,
-                  train_epoch=20,
+                  train_epoch=50,
+                  run_epoch=100,
                   action_reshape=action_reshape.reshape)
     env.reset()
     model.train()
