@@ -33,9 +33,8 @@ class Q_Model(object):
                 fully_connected.trainable = trainable
 
             fully_connected = tf.concat((fully_connected, self.action), axis=1)
-            fully_connected = tf.contrib.layers.fully_connected(fully_connected, 1, activation_fn=tf.sigmoid)
-            fully_connected.trainable = trainable
-            self._Q = fully_connected * 2 - 1
+            self._Q = tf.contrib.layers.fully_connected(fully_connected, 1, activation_fn=None)
+            self._Q.trainable = trainable
 
     @property
     def Q(self):

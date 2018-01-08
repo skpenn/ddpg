@@ -8,7 +8,8 @@ from memory import ReplayBuf, Transition
 class Model(object):
     def __init__(self, env: callable, state_shape: list, action_size: int, q_network_shape: tuple,
                  mu_network_shape: tuple, buffer_size: int, gamma: float, tau: float, noise_stddev: float,
-                 save_dir: str, learning_rate: float, batch_size: int, episode: int, train_epoch: int):
+                 save_dir: str, learning_rate: float, batch_size: int, episode: int, train_epoch: int,
+                 action_reshape: callable=None):
         self.env = env
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -21,6 +22,7 @@ class Model(object):
         self.episode = episode
         self.train_epoch = train_epoch
         self.dir = save_dir
+        self.action_reshape = action_reshape
 
         input_s = Inputs(state_shape, batch_size)
         input_s_plus_1 = Inputs(state_shape, batch_size)
@@ -63,13 +65,19 @@ class Model(object):
             self._sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
 
         for _ in range(self.episode):
-            end_state, _, _ = self.env()
+            end_state = self.env.reset()
             while True:
+                try:
+                    self.env.render()
+                except:
+                    pass
                 start_state = end_state
                 data_s_i[0] = start_state
                 action = self._sess.run(self._actor.a, {s_i: data_s_i})[0] + np.random.normal(0, scale=self.noise_stddev, size=self.action_size) # get an action, a = Mu(s)+Noise
+                if self.action_reshape is not None:
+                    action = self.action_reshape(action)
                 print("Action: {}".format(action[0]))
-                end_state, reward, _done = self.env(action)
+                end_state, reward, _done, _ = self.env.step(action)
                 print("Reward: {}".format(reward))
 
                 transition = Transition(start_state, action, reward, end_state)
