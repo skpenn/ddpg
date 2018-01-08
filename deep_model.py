@@ -24,6 +24,9 @@ class Q_Model(object):
 
             # flatten
             fully_connected = tf.reshape(out, [batch_size, -1])
+            fully_connected = tf.concat((fully_connected, self.action), axis=1)
+            fully_connected = tf.contrib.layers.layer_norm(fully_connected, center=True, scale=True)
+            fully_connected.trainable = trainable
 
             # fully connected layer
             for num in network_shape[-1]:
@@ -32,7 +35,6 @@ class Q_Model(object):
                 fully_connected = tf.contrib.layers.layer_norm(fully_connected, center=True, scale=True)
                 fully_connected.trainable = trainable
 
-            fully_connected = tf.concat((fully_connected, self.action), axis=1)
             self._Q = tf.contrib.layers.fully_connected(fully_connected, 1, activation_fn=None)
             self._Q.trainable = trainable
 
@@ -42,7 +44,7 @@ class Q_Model(object):
 
     @property
     def a_grads(self):
-        return tf.gradients(self.Q, self.action)
+        return tf.gradients(-1*self.Q, self.action)
 
     @property
     def theta(self):
@@ -50,9 +52,10 @@ class Q_Model(object):
 
 
 class Mu_Model(object):
-    def __init__(self, name: str, inputs: Inputs, action_size: int, network_shape: tuple, batch_size: int=32, trainable: bool = True):
+    def __init__(self, name: str, inputs: Inputs, action_size: int, network_shape: tuple, batch_size: int=32, trainable: bool = True, y_grads=None):
         self.name = name
         self.state = inputs.s
+        self.y_grads = y_grads
 
         with tf.variable_scope(name) as scope:
             out = self.state
@@ -66,6 +69,8 @@ class Mu_Model(object):
 
             # flatten
             fully_connected = tf.reshape(out, [batch_size, -1])
+            fully_connected = tf.contrib.layers.layer_norm(fully_connected, center=True, scale=True)
+            fully_connected.trainable = trainable
 
             # fully connected layer
             for num in network_shape[-1]:
@@ -87,5 +92,5 @@ class Mu_Model(object):
 
     @property
     def grads(self):
-        return tf.gradients(self._a, self.theta)
+        return tf.gradients(self._a, self.theta, self.y_grads)
 

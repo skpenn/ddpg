@@ -24,6 +24,10 @@ class ReplayBuf(object):
     def get_by_indexes(self, indexes: list)->map:
         return map(self._data.__getitem__, indexes)
 
+    def empty(self):
+        self._len = 0
+        self._top_pointer = 0
+
 
 class Transition(object):
     def __init__(self, state, action, reward: float, next_state):

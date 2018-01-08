@@ -28,9 +28,9 @@ class Model(object):
         input_s_plus_1 = Inputs(state_shape, batch_size)
         q = Q_Model("Q_0", input_s, action_size, q_network_shape, batch_size)
         q_apo = Q_Model("Q_apo", input_s_plus_1, action_size, q_network_shape, batch_size, trainable=False)
-        mu = Mu_Model("Mu_0", input_s, action_size, mu_network_shape, batch_size)
+        mu = Mu_Model("Mu_0", input_s, action_size, mu_network_shape, batch_size, y_grads=q.a_grads)
         mu_apo = Mu_Model("Mu_apo", input_s_plus_1, action_size, mu_network_shape, batch_size, trainable=False)
-        self._actor = Actor(mu, mu_apo, gamma, tau, batch_size, q.a_grads, learning_rate)
+        self._actor = Actor(mu, mu_apo, gamma, tau, batch_size, learning_rate)
         self._critic = Critic(q, q_apo, gamma, tau, batch_size, learning_rate)
         self._replayBuf = ReplayBuf(buffer_size)
         self._sess = None
@@ -75,10 +75,11 @@ class Model(object):
                 data_s_i[0] = start_state
                 action = self._sess.run(self._actor.a, {s_i: data_s_i})[0] + np.random.normal(0, scale=self.noise_stddev, size=self.action_size) # get an action, a = Mu(s)+Noise
                 if self.action_reshape is not None:
-                    action = self.action_reshape(action)
-                print("Action: {}".format(action[0]))
-                end_state, reward, _done, _ = self.env.step(action)
-                print("Reward: {}".format(reward))
+                    end_state, reward, _done, _ = self.env.step(self.action_reshape(action))
+                else:
+                    end_state, reward, _done, _ = self.env.step(action)
+                #print("Action: {}".format(action))
+                #print("Reward: {}".format(reward))
 
                 transition = Transition(start_state, action, reward, end_state)
                 self._replayBuf.append(transition)
@@ -106,8 +107,9 @@ class Model(object):
                                         s_i_next: data_s_i_next,
                                         a_i_next: data_a_i_next,
                                         r_i: data_r_i})
+                        a = self._sess.run(self._actor.a, {s_i: data_s_i})
                         _, a = self._sess.run([self._actor.maximize_action_q(), self._actor.a],     # maximize actor-critic value
-                                       {s_i: data_s_i})
+                                       {s_i: data_s_i, a_i: a})
                         q = self._sess.run(self._critic.Q,                  # calculate q value
                                               {s_i: data_s_i, a_i:a})
                     self._sess.run(self._critic.update_target_net())     # update target network
@@ -115,3 +117,4 @@ class Model(object):
                     self._saver.save(self._sess, save_path=self.dir)
                     print("Average loss: {}".format(loss.mean()))
                     print("Average Q value: {}".format(q.mean()))
+                    self._replayBuf.empty()
