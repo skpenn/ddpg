@@ -55,7 +55,7 @@ class Critic(object):
 
 
 class Actor(object):
-    def __init__(self, Mu_model, Mu_model_apo, gamma: float, tau: float, batch_size: int=32, learning_rate: float=0.01):
+    def __init__(self, Mu_model, Mu_model_apo, gamma: float, tau: float, learning_rate: float=0.01):
         self.Mu_model_apo = Mu_model_apo
         self.Mu_model = Mu_model
         self.gamma = gamma
@@ -65,9 +65,7 @@ class Actor(object):
         self._theta = Mu_model.theta
         self._theta_apo = Mu_model_apo.theta
 
-        #grads = tf.gradients(-1*self.a, self._theta, grad_ys=a_grad)
-        opt = tf.train.GradientDescentOptimizer(self.learning_rate)
-        self._optimizer = opt.apply_gradients(zip(Mu_model.grads, self._theta))
+        self._optimizer = tf.train.GradientDescentOptimizer(self.learning_rate).apply_gradients(zip(Mu_model.grads, self._theta))
 
     @property
     def s(self):

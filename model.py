@@ -30,7 +30,7 @@ class Model(object):
         q_apo = Q_Model("Q_apo", input_s_plus_1, action_size, q_network_shape, batch_size, trainable=False)
         mu = Mu_Model("Mu_0", input_s, action_size, mu_network_shape, batch_size, y_grads=q.a_grads)
         mu_apo = Mu_Model("Mu_apo", input_s_plus_1, action_size, mu_network_shape, batch_size, trainable=False)
-        self._actor = Actor(mu, mu_apo, gamma, tau, batch_size, learning_rate)
+        self._actor = Actor(mu, mu_apo, gamma, tau, learning_rate)
         self._critic = Critic(q, q_apo, gamma, tau, batch_size, learning_rate)
         self._replayBuf = ReplayBuf(buffer_size)
         self._sess = None
@@ -107,6 +107,13 @@ class Model(object):
                                         s_i_next: data_s_i_next,
                                         a_i_next: data_a_i_next,
                                         r_i: data_r_i})
+                    for _ in range(self.train_epoch):
+                        sample = list(range(self.buffer_size))
+                        np.random.shuffle(sample)
+                        sample_batch = self._replayBuf.get_by_indexes(sample[:self.batch_size])  # get batch
+                        for i, data in enumerate(sample_batch):  # generate data
+                            data_s_i[i] = data.state
+
                         a = self._sess.run(self._actor.a, {s_i: data_s_i})
                         _, a = self._sess.run([self._actor.maximize_action_q(), self._actor.a],     # maximize actor-critic value
                                        {s_i: data_s_i, a_i: a})
