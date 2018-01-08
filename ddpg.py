@@ -15,7 +15,7 @@ class Critic(object):
 
         y_i = self.reward + self.gamma * self.Q_model_apo.Q
         self.loss = tf.pow((y_i - self.Q_model.Q), 2) * 0.5
-        self._optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
+        self._optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
 
     @property
     def s(self):
@@ -65,7 +65,7 @@ class Actor(object):
         self._theta = Mu_model.theta
         self._theta_apo = Mu_model_apo.theta
 
-        self._optimizer = tf.train.GradientDescentOptimizer(self.learning_rate).apply_gradients(zip(Mu_model.grads, self._theta))
+        self._optimizer = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(zip(Mu_model.grads, self._theta))
 
     @property
     def s(self):

@@ -38,6 +38,8 @@ class Q_Model(object):
             self._Q = tf.contrib.layers.fully_connected(fully_connected, 1, activation_fn=None)
             self._Q.trainable = trainable
 
+        self.theta = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
+
     @property
     def Q(self):
         return self._Q
@@ -45,10 +47,6 @@ class Q_Model(object):
     @property
     def a_grads(self):
         return tf.gradients(-1*self.Q, self.action)
-
-    @property
-    def theta(self):
-        return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
 
 
 class Mu_Model(object):
@@ -82,13 +80,11 @@ class Mu_Model(object):
             self._a = tf.contrib.layers.fully_connected(fully_connected, action_size, activation_fn=tf.sigmoid)
             self._a.trainable = trainable
 
+        self.theta = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
+
     @property
     def a(self):
         return self._a
-
-    @property
-    def theta(self):
-        return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
 
     @property
     def grads(self):
