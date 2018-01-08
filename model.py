@@ -133,4 +133,3 @@ class Model(object):
                     self._saver.save(self._sess, save_path=self.dir)
                     print("Average loss: {}".format(loss.mean()))
                     print("Average Q value: {}".format(q.mean()))
-                    self._replayBuf.empty()
