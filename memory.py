@@ -20,7 +20,7 @@ class ReplayBuf(object):
         self._data[self._top_pointer] = value
         self._top_pointer += 1
         if self._top_pointer >= self.max_len:
-            self._top_pointer = self._top_pointer//self.max_len
+            self._top_pointer = self._top_pointer%self.max_len
         if self._len<self.max_len:
             self._len += 1
 

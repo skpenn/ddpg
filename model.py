@@ -8,11 +8,10 @@ from memory import ReplayBuf
 class Model(object):
     def __init__(self, env: callable, state_shape: list, action_size: int, q_network_shape: tuple,
                  mu_network_shape: tuple, buffer_size: int, gamma: float, tau: float, noise_stddev: float,
-                 save_dir: str, learning_rate: float, batch_size: int, episode: int, train_epoch: int, run_epoch: int=100,
-                 action_reshape: callable=None):
+                 save_dir: str, actor_learning_rate: float, critic_learning_rate: float, batch_size: int, episode: int,
+                 train_epoch: int, run_epoch: int=100, action_reshape: callable=None):
         self.env = env
         self.batch_size = batch_size
-        self.learning_rate = learning_rate
         self.state_shape = state_shape
         self.action_size = action_size
         self.q_network_shape = q_network_shape
@@ -32,8 +31,8 @@ class Model(object):
         q = Q_Model("Q_0", state_i, action_i, q_network_shape, batch_size)
         mu = Mu_Model("Mu_0", state_i, action_size, mu_network_shape, batch_size, y_grads=q.a_grads)
         q_apo = Q_Model("Q_apo", state_i_next, mu_apo.a, q_network_shape, batch_size, trainable=False)
-        self._actor = Actor(mu, mu_apo, gamma, tau, learning_rate)
-        self._critic = Critic(q, q_apo, gamma, tau, batch_size, learning_rate)
+        self._actor = Actor(mu, mu_apo, gamma, tau, actor_learning_rate)
+        self._critic = Critic(q, q_apo, gamma, tau, batch_size, critic_learning_rate)
         self._s_buf = ReplayBuf(buffer_size, self.state_shape)
         self._a_buf = ReplayBuf(buffer_size, [self.action_size])
         self._r_buf = ReplayBuf(buffer_size, [1])
