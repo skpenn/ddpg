@@ -16,6 +16,10 @@ class Critic(object):
         y_i = self.reward + self.gamma * self.Q_model_apo.Q
         self.loss = tf.pow((y_i - self.Q_model.Q), 2) * 0.5
         self._optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
+        assignments = [tf.assign(var_apo, var) if "norm" in var.name.lower() else
+                       tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in
+                       zip(self._theta_apo, self._theta)]
+        self._update = tf.group(*assignments)
 
     @property
     def s(self):
@@ -45,9 +49,7 @@ class Critic(object):
         return self._optimizer
 
     def update_target_net(self):
-        assignments = (tf.assign(var_apo, var) if "norm" in var.name.lower() else
-            tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in zip(self._theta_apo, self._theta))
-        return tf.group(*assignments)
+        return self._update
 
     def init_target_net(self):
         assignments = (tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta))
@@ -66,6 +68,10 @@ class Actor(object):
         self._theta_apo = Mu_model_apo.theta
 
         self._optimizer = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(zip(Mu_model.grads, self._theta))
+        assignments = [tf.assign(var_apo, var) if "norm" in var.name.lower() else
+                       tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in
+                       zip(self._theta_apo, self._theta)]
+        self._update = tf.group(*assignments)
 
     @property
     def s(self):
@@ -87,10 +93,7 @@ class Actor(object):
         return self._optimizer
 
     def update_target_net(self):
-        assignments = (tf.assign(var_apo, var) if "norm" in var.name.lower() else
-                       tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in
-                       zip(self._theta_apo, self._theta))
-        return tf.group(*assignments)
+        return self._update
 
     def init_target_net(self):
         assignments = (tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta))

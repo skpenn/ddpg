@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import time
 from deep_model import Q_Model, Mu_Model
 from ddpg import Actor, Critic
 from memory import ReplayBuf
@@ -95,9 +96,11 @@ class Model(object):
                     break
 
                 if len(self._s_buf) >= self.batch_size*10 and count >= self.run_epoch:
+                    print("Action: {}".format(action))
                     count = 0
                     loss = np.zeros([0])
                     q = np.zeros([0])
+
                     for _ in range(self.train_epoch):
                         sample = list(range( len(self._s_buf) ))
                         np.random.shuffle(sample)
@@ -124,7 +127,7 @@ class Model(object):
                         _, a = self._sess.run([self._actor.maximize_action_q(), self._actor.a],     # maximize actor-critic value
                                        {s_i: data_s_i, a_i: a})
                         q = self._sess.run(self._critic.Q,                  # calculate q value
-                                              {s_i: data_s_i, a_i:a})
+                                              {s_i: data_s_i, a_i: a})
                         self._sess.run(self._critic.update_target_net())     # update target network
                         self._sess.run(self._actor.update_target_net())
 
