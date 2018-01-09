@@ -109,25 +109,11 @@ class Model(object):
                         data_r_i = self._r_buf.get_by_indexes(sample[:self.batch_size])
                         data_s_i_next= self._s_next_buf.get_by_indexes(sample[:self.batch_size])
 
-                        if i == 0:
-                            t, t0=self._sess.run(self._critic.theta0())
-                            print("{}\n{}".format(t, t0))
                         _, loss = self._sess.run([self._critic.minimize_loss(), self._critic.loss],   # minimize critic loss
                                        {s_i: data_s_i,
                                         a_i: data_a_i,
                                         s_i_next: data_s_i_next,
                                         r_i: data_r_i})
-                        if i == 0:
-                            t, t0=self._sess.run(self._critic.theta0())
-                            print("{}\n{}".format(t, t0))
-                        '''
-                        for _ in range(self.train_epoch):
-                            sample = list(range(self.buffer_size))
-                            np.random.shuffle(sample)
-                            sample_batch = self._replayBuf.get_by_indexes(sample[:self.batch_size])  # get batch
-                            for i, data in enumerate(sample_batch):  # generate data
-                                data_s_i[i] = data.state
-                        '''
 
                         a = self._sess.run(self._actor.a, {s_i: data_s_i})
                         _, a = self._sess.run([self._actor.maximize_action_q(), self._actor.a],     # maximize actor-critic value
