@@ -52,7 +52,7 @@ class Critic(object):
         return self._update
 
     def init_target_net(self):
-        assignments = (tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta))
+        assignments = [tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta)]
         return tf.group(*assignments)
 
 
@@ -96,6 +96,6 @@ class Actor(object):
         return self._update
 
     def init_target_net(self):
-        assignments = (tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta))
+        assignments = [tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta)]
         return tf.group(*assignments)
 
