@@ -101,7 +101,7 @@ class Model(object):
                     loss = np.zeros([0])
                     q = np.zeros([0])
 
-                    for _ in range(self.train_epoch):
+                    for i in range(self.train_epoch):
                         sample = list(range( len(self._s_buf) ))
                         np.random.shuffle(sample)
                         data_s_i = self._s_buf.get_by_indexes(sample[:self.batch_size])   # get batch
@@ -109,11 +109,17 @@ class Model(object):
                         data_r_i = self._r_buf.get_by_indexes(sample[:self.batch_size])
                         data_s_i_next= self._s_next_buf.get_by_indexes(sample[:self.batch_size])
 
+                        if i == 0:
+                            t, t0=self._sess.run(self._critic.theta0())
+                            print("{}\n{}".format(t, t0))
                         _, loss = self._sess.run([self._critic.minimize_loss(), self._critic.loss],   # minimize critic loss
                                        {s_i: data_s_i,
                                         a_i: data_a_i,
                                         s_i_next: data_s_i_next,
                                         r_i: data_r_i})
+                        if i == 0:
+                            t, t0=self._sess.run(self._critic.theta0())
+                            print("{}\n{}".format(t, t0))
                         '''
                         for _ in range(self.train_epoch):
                             sample = list(range(self.buffer_size))

@@ -55,6 +55,10 @@ class Critic(object):
         assignments = [tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta)]
         return tf.group(*assignments)
 
+    def theta0(self):
+        print("{} {}".format(self._theta[2], self._theta_apo[2]))
+        return self._theta[2], self._theta_apo[2]
+
 
 class Actor(object):
     def __init__(self, Mu_model, Mu_model_apo, gamma: float, tau: float, learning_rate: float=0.01):
