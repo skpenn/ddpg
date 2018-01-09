@@ -16,6 +16,10 @@ class Critic(object):
         y_i = self.reward + self.gamma * self.Q_model_apo.Q
         self.loss = tf.pow((y_i - self.Q_model.Q), 2) * 0.5
         self._optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss)
+        assignments = [tf.assign(var_apo, var) if "norm" in var.name.lower() else
+                       tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in
+                       zip(self._theta_apo, self._theta)]
+        self._update = tf.group(*assignments)
 
     @property
     def s(self):
@@ -41,21 +45,19 @@ class Critic(object):
     def Q_apo(self):
         return self.Q_model_apo.Q
 
-    @property
-    def a_grads(self):
-        return self.Q_model.a_grads
-
     def minimize_loss(self):
         return self._optimizer
 
     def update_target_net(self):
-        assignments = (tf.assign(var_apo, var) if "norm" in var.name.lower() else
-            tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in zip(self._theta_apo, self._theta))
+        return self._update
+
+    def init_target_net(self):
+        assignments = [tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta)]
         return tf.group(*assignments)
 
 
 class Actor(object):
-    def __init__(self, Mu_model, Mu_model_apo, gamma: float, tau: float, a_grad, batch_size: int=32, learning_rate: float=0.01):
+    def __init__(self, Mu_model, Mu_model_apo, gamma: float, tau: float, learning_rate: float=0.01):
         self.Mu_model_apo = Mu_model_apo
         self.Mu_model = Mu_model
         self.gamma = gamma
@@ -65,9 +67,11 @@ class Actor(object):
         self._theta = Mu_model.theta
         self._theta_apo = Mu_model_apo.theta
 
-        #grads = tf.gradients(self.a, self._theta, grad_ys=a_grad)
-        opt = tf.train.AdamOptimizer(-self.learning_rate)
-        self._optimizer = opt.apply_gradients(zip(Mu_model.grads, self._theta))
+        self._optimizer = tf.train.AdamOptimizer(self.learning_rate).apply_gradients(zip(Mu_model.grads, self._theta))
+        assignments = [tf.assign(var_apo, var) if "norm" in var.name.lower() else
+                       tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in
+                       zip(self._theta_apo, self._theta)]
+        self._update = tf.group(*assignments)
 
     @property
     def s(self):
@@ -89,8 +93,9 @@ class Actor(object):
         return self._optimizer
 
     def update_target_net(self):
-        assignments = (tf.assign(var_apo, var) if "norm" in var.name.lower() else
-                       tf.assign(var_apo, var * self.tau + var_apo * (1 - self.tau)) for var_apo, var in
-                       zip(self._theta_apo, self._theta))
+        return self._update
+
+    def init_target_net(self):
+        assignments = [tf.assign(var_apo, var) for var_apo, var in zip(self._theta_apo, self._theta)]
         return tf.group(*assignments)
 
