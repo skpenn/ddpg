@@ -9,11 +9,12 @@ score_shape = (96, 80)
 state_place = ((600, 1624), (28, 1052))
 start_tap = (550, 550)
 restart_tap = (550, 1550)
-boundage = (30, 10)
+boundary = (30, 10)
 tap_str = 'adb shell input tap {} {}'
 swipe_str = 'adb shell input swipe {0} {1} {0} {1} {2}'
 threshold = 0.8
 score_range = 30
+start_place = ((500, 600), (250, 450))
 
 
 class Environment(object):
@@ -25,17 +26,19 @@ class Environment(object):
         self.score = 0
         self._finish_template = cv2.imread("data/replay.png")
         self._score_template = cv2.imread("data/all.png")
+        self._new_template = cv2.imread("data/new_game.png")
+        self._jump = cv2.imread("data/jump.png")
 
-    def __call__(self, action: list = None):
+    def step(self, _action: list = None):
         if not self.inGame:
-            x, y = self._rand_tap(restart_tap[0], restart_tap[1], boundage[0], boundage[1], bound=True)
+            x, y = self._rand_tap(restart_tap[0], restart_tap[1], boundary[0], boundary[1], bound=True)
             print("Tapped restart")
             os.system(tap_str.format(x, y))
             time.sleep(2)
             self._fetch_img()
             while self._isFinished():
                 time.sleep(5)
-                x, y = self._rand_tap(restart_tap[0], restart_tap[1], boundage[0], boundage[1], bound=True)
+                x, y = self._rand_tap(restart_tap[0], restart_tap[1], boundary[0], boundary[1], bound=True)
                 print("Tapped restart")
                 os.system(tap_str.format(x, y))
                 self._fetch_img()
@@ -47,14 +50,14 @@ class Environment(object):
                 self.inGame = True
         rewards = 0
         _done = False
-        if action is not None:
-            act = action[0]
+        if _action is not None:
+            act = _action[0]
             if act > 1:
                 act = 1
             if act > 0.2:
-                x, y = self._rand_tap(start_tap[0], start_tap[1], boundage[0], boundage[1])
-                os.system(swipe_str.format(int(x), int(y), int(action[0] * 1000)))
-                time.sleep(action[0])
+                x, y = self._rand_tap(start_tap[0], start_tap[1], boundary[0], boundary[1])
+                os.system(swipe_str.format(int(x), int(y), int(_action[0] * 1000)))
+                time.sleep(0.4)
                 self._fetch_img()
                 score = self._get_score()
                 if score == self.score:
@@ -70,7 +73,7 @@ class Environment(object):
                     rewards = (score - self.score) / score_range
                     self.score = score
                 else:
-                    raise Exception()
+                    self.restart()
             else:
                 time.sleep(2)
                 self._fetch_img()
@@ -78,18 +81,71 @@ class Environment(object):
                 rewards = (score - self.score) / score_range
                 self.score = score
         return cv2.resize(self._img[state_place[0][0]:state_place[0][1], state_place[1][0]:state_place[1][1]],
-                           tuple(self.state_shape[:2])), rewards, _done
+                           tuple(self.state_shape[:2])), rewards, _done, ''
 
-    def reset(self) -> bool:
+    def restart(self):
+        os.system("adb shell input keyevent 4")
+        time.sleep(2)
+        os.system("adb shell input keyevent 4")
+        time.sleep(2)
+        os.system("adb shell input keyevent 4")
+        time.sleep(2)
+        os.system("adb shell input keyevent 4")
+        time.sleep(2)
+        os.system("adb shell input tap 650 1450")
+        time.sleep(5)
+        os.system("adb shell input tap 650 1800")
+        time.sleep(3)
+        os.system("adb shell input tap 650 1750")
+        time.sleep(1)
+        self._fetch_img()
+        os.system("adb shell input tap 550 550")
+        sub_img = self._img[start_place[0][0]:start_place[0][1], start_place[1][0]:start_place[1][1]]
+        res = cv2.matchTemplate(sub_img, self._jump, cv2.TM_CCOEFF_NORMED)
+        _, max, _, _ = cv2.minMaxLoc(res)
+        if max< threshold:
+            raise Exception()
+        else:
+            time.sleep(3)
+            self.reset()
+
+
+    def reset(self):
+        self._fetch_img()
+        score = self._get_score()
+        if score<0:
+            if self._isFinished():
+                x, y = self._rand_tap(restart_tap[0], restart_tap[1], boundary[0], boundary[1], bound=True)
+                print("Tapped restart")
+                os.system(tap_str.format(x, y))
+                time.sleep(2)
+                self._fetch_img()
+                while self._isFinished():
+                    time.sleep(5)
+                    x, y = self._rand_tap(restart_tap[0], restart_tap[1], boundary[0], boundary[1], bound=True)
+                    print("Tapped restart")
+                    os.system(tap_str.format(x, y))
+                    self._fetch_img()
+            else:
+                self.restart()
+        score = self._get_score()
+        if score<0:
+            raise Exception()
+        self.score = score
+        self.inGame = True
+
+        return cv2.resize(self._img[state_place[0][0]:state_place[0][1], state_place[1][0]:state_place[1][1]],
+                          tuple(self.state_shape[:2]))
+        '''
         print("Tapped start")
         os.system('adb shell input keyevent 4')
-        x, y = self._rand_tap(start_tap[0], start_tap[1], boundage[0], boundage[1], bound=True)
+        x, y = self._rand_tap(start_tap[0], start_tap[1], boundary[0], boundary[1], bound=True)
         os.system(tap_str.format(x, y))
         time.sleep(1)
         self._fetch_img()
         while self._isFinished():
             time.sleep(5)
-            x, y = self._rand_tap(restart_tap[0], restart_tap[1], boundage[0], boundage[1], bound=True)
+            x, y = self._rand_tap(restart_tap[0], restart_tap[1], boundary[0], boundary[1], bound=True)
             print("Tapped restart")
             os.system(tap_str.format(x, y))
             self._fetch_img()
@@ -97,14 +153,20 @@ class Environment(object):
         if score >= 0:
             self.score = score
             self.inGame = True
-            return True
-        return False
+            return self._img
+        return None
+        '''
 
     def _isFinished(self) -> bool:
         sub_img = self._img[replay_place[0][0]:replay_place[0][1], replay_place[1][0]:replay_place[1][1]]
         res = cv2.matchTemplate(sub_img, self._finish_template, cv2.TM_CCOEFF_NORMED)
         _, max, _, _ = cv2.minMaxLoc(res)
-        return max > threshold
+        if max > threshold:
+            return True
+        else:
+            res = cv2.matchTemplate(sub_img, self._new_template, cv2.TM_CCOEFF_NORMED)
+            _, max, _, _ = cv2.minMaxLoc(res)
+            return max > threshold
 
     @staticmethod
     def _rand_tap(x, y, x_stddev, y_stddev, bound=False):
@@ -148,12 +210,13 @@ if __name__ == "__main__":
 
     env = Environment()
     env.reset()
+    reward = 0
     for _ in range(100):
         print("start!")
-        _, reward, done = env()
+        done = False
         while not done:
             print("reward: {}".format(reward))
             action = rand_agent()
             print("action: {}".format(action))
-            _, reward, done = env(action)
+            _, reward, done, _ = env.step(action)
         print("failed!, reward: {}".format(reward))
